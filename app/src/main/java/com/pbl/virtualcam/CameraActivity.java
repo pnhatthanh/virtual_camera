@@ -2,7 +2,10 @@ package com.pbl.virtualcam;
 
 import static android.Manifest.permission.CAMERA;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -27,6 +30,7 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
@@ -41,6 +45,7 @@ public class CameraActivity extends AppCompatActivity {
     private CameraDevice myCameraDevice;
     private CaptureRequest.Builder captureRequestBuilder;
     private ImageReader imageReader;
+    private Integer sensorOrientation = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,13 +73,14 @@ public class CameraActivity extends AppCompatActivity {
             }
         }).start();
     }
-
     private void initializeCamera() {
         textureView = findViewById(R.id.view);
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         textureView.setSurfaceTextureListener(textureListener);
         try {
             cameraID = cameraManager.getCameraIdList()[0];
+            CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraID);
+            sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
@@ -164,6 +170,7 @@ public class CameraActivity extends AppCompatActivity {
                 ByteBuffer buffer= image.getPlanes()[0].getBuffer();
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
+                bytes = compressAndProcessImage(bytes);
                 SocketManager.SendData(bytes);
                 image.close();
             }
@@ -229,5 +236,24 @@ public class CameraActivity extends AppCompatActivity {
                 initializeCamera();
             }
         }
+    }
+
+    // Compress and process the captured image
+    private byte[] compressAndProcessImage(byte[] imageBytes) {
+
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        bitmap = rotateBitmap(bitmap, sensorOrientation);
+
+        // Compress the bitmap to JPEG with 75% quality
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
+        return byteArrayOutputStream.toByteArray();
+
+
+    }
+    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
+        Matrix matrix = new Matrix();
+        matrix.postRotate(orientation);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 }
