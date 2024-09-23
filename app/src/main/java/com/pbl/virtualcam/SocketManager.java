@@ -1,13 +1,20 @@
 package com.pbl.virtualcam;
 
+import android.media.Image;
+import android.os.Build;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
 
 
-public class SocketManager {
+public class SocketManager{
     private ServerSocket serverSocket;
     public static Vector<SocketHandler> socketSet=new Vector<SocketHandler>();
 
@@ -18,6 +25,7 @@ public class SocketManager {
                 Socket socket= serverSocket.accept();
                 SocketHandler socketHandler=new SocketHandler(socket);
                 socketSet.add(socketHandler);
+                socketHandler.start();
             }
         }catch (Exception e){
             e.printStackTrace();
@@ -26,30 +34,40 @@ public class SocketManager {
 
     public static void SendData(byte[] imageData){
         for(SocketHandler socketHandeler : socketSet){
-            socketHandeler.SendImage(imageData);
+            socketHandeler.SetImageData(imageData);
         }
     }
 }
-class SocketHandler{
+
+class SocketHandler extends Thread{
     private Socket socket;
-    private DataOutputStream outputStream;
-    public SocketHandler(Socket _socket){
-        try{
-            this.socket=_socket;
-            outputStream=new DataOutputStream(socket.getOutputStream());
-        }catch (Exception e){
+    private DataOutputStream dataOutputStream;
+    private byte[] imageData;
+
+    public SocketHandler(Socket _socket) {
+        try {
+            this.socket = _socket;
+            this.dataOutputStream=new DataOutputStream(this.socket.getOutputStream());
+            this.imageData=null;
+        } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
-    public void SendImage(byte[] imageData){
-        new Thread(() -> {
-            try {
-                outputStream.writeInt(imageData.length);
-                outputStream.write(imageData);
-                outputStream.flush();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }).start();
+    public void run(){
+        while (!socket.isClosed()){
+            if(imageData==null) continue;
+            try{
+                dataOutputStream.writeInt(imageData.length);
+                dataOutputStream.flush();
+                dataOutputStream.write(imageData);
+                dataOutputStream.flush();
+                this.imageData=null;
+                }catch (Exception e){
+                }
+
+        }
+    }
+    public void SetImageData(byte[] image){
+        this.imageData=image;
     }
 }
