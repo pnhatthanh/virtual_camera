@@ -4,38 +4,59 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/main"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    tools:context=".CameraActivity">
+    android:layout_height="match_parent">
 
     <TextureView
         android:id="@+id/view"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:backgroundTint="#C7C3C3"
-        tools:layout_editor_absoluteX="-16dp"
-        tools:layout_editor_absoluteY="0dp" />
+        android:layout_height="0dp"
+        android:layout_marginTop="0dp"
+        android:layout_marginBottom="0dp"
+        app:layout_constraintBottom_toTopOf="@+id/constraint2"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
-    <Button
-        android:id="@+id/btn_stop"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginBottom="16dp"
-        android:backgroundTint="#EF1E1E"
-        android:text="Stop"
-        android:textAlignment="center"
-        android:textSize="14sp"
-        android:textStyle="bold"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/constraint2"
+        android:layout_width="409dp"
+        android:layout_height="126dp"
+        android:background="#141212"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintLeft_toLeftOf="parent">
 
-    <Button
-        android:id="@+id/switch_camera"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginLeft="24dp"
-        android:layout_marginBottom="24dp"
-        android:text="switch"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@id/btn_stop" />
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/stop"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginStart="172dp"
+            android:background="@drawable/round"
+            android:foregroundTint="@null"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/switch_camera"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginTop="35dp"
+            android:layout_marginEnd="53dp"
+            android:background="@drawable/image_switch"
+            android:text=" "
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <androidx.appcompat.widget.AppCompatButton
+            android:id="@+id/setting"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="53dp"
+            android:layout_marginTop="38dp"
+            android:background="@drawable/setting_fill"
+            android:text=" "
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>
