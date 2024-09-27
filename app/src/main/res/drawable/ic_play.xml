@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Vòng tròn trắng lớn -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="#FFFFFF"/>
+        </shape>
+    </item>
+
+    <!-- Hình vuông đỏ nhỏ bên trong vòng tròn -->
+    <item
+        android:width="25dp"
+        android:height="25dp"
+        android:gravity="center">
+        <shape android:shape="rectangle">
+            <solid android:color="#EF1D1D"/>
+        </shape>
+    </item>
+</layer-list>

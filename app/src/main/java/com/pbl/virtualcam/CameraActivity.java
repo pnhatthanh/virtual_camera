@@ -23,10 +23,11 @@ import android.os.Bundle;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
-
+import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
@@ -46,6 +47,7 @@ public class CameraActivity extends AppCompatActivity {
     private CaptureRequest.Builder captureRequestBuilder;
     private ImageReader imageReader;
     private Integer sensorOrientation = 0;
+    private boolean isPlay=true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -65,6 +67,22 @@ public class CameraActivity extends AppCompatActivity {
         }
         Button switchCameraButton=findViewById(R.id.switch_camera);
         switchCameraButton.setOnClickListener(e-> switchCamera());
+
+        Button stopButton=findViewById(R.id.stop);
+        stopButton.setOnClickListener(e->{
+            isPlay=!isPlay;
+            Toast toast = new Toast(getApplicationContext());
+            toast.setDuration(Toast.LENGTH_SHORT);
+            if (isPlay) {
+                stopButton.setBackground(ContextCompat.getDrawable(this, R.drawable.ic_play));
+                toast.setText("Đang phát video");
+            } else {
+                stopButton.setBackground(ContextCompat.getDrawable(this, R.drawable.ic_stop));
+                toast.setText("Đã dừng phát video");
+            }
+            toast.show();
+        });
+
         new Thread(()->{
             try{
                 new SocketManager(8888);
@@ -171,7 +189,8 @@ public class CameraActivity extends AppCompatActivity {
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
                 bytes = compressAndProcessImage(bytes);
-                SocketManager.SendData(bytes);
+                if(isPlay)
+                    SocketManager.SendData(bytes);
                 image.close();
             }
         }, null);

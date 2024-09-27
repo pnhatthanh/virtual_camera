@@ -29,7 +29,7 @@
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:layout_marginStart="172dp"
-            android:background="@drawable/round"
+            android:background="@drawable/ic_play"
             android:foregroundTint="@null"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="parent"

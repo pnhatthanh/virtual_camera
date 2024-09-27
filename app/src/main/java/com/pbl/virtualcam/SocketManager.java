@@ -1,14 +1,6 @@
 package com.pbl.virtualcam;
 
-import android.media.Image;
-import android.os.Build;
-
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Vector;
@@ -54,20 +46,21 @@ class SocketHandler extends Thread{
         }
     }
     public void run(){
+        byte[] dataToSend;
         while (!socket.isClosed()){
-            if(imageData==null) continue;
+            synchronized (this){
+                if(imageData==null) continue;
+                dataToSend=this.imageData;
+                imageData=null;
+            }
             try{
-                dataOutputStream.writeInt(imageData.length);
-                dataOutputStream.flush();
-                dataOutputStream.write(imageData);
-                dataOutputStream.flush();
-                this.imageData=null;
-                }catch (Exception e){
-                }
-
+                dataOutputStream.writeInt(dataToSend.length);
+                dataOutputStream.write(dataToSend);
+            }catch (Exception e){
+            }
         }
     }
-    public void SetImageData(byte[] image){
+    public synchronized void SetImageData(byte[] image){
         this.imageData=image;
     }
 }
