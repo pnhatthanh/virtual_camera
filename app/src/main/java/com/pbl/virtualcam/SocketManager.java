@@ -1,21 +1,29 @@
 package com.pbl.virtualcam;
 
-import java.io.DataOutputStream;
-import java.net.ServerSocket;
-import java.net.Socket;
+import android.widget.Toast;
+
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.util.Vector;
 
-
 public class SocketManager{
-    private ServerSocket serverSocket;
+    private DatagramSocket serverSocket;
     public static Vector<SocketHandler> socketSet=new Vector<SocketHandler>();
+    static byte[] dataToSend;
 
     public SocketManager(int port){
         try{
-            serverSocket =new ServerSocket(port);
+            serverSocket=new DatagramSocket(port);
             while(true){
-                Socket socket= serverSocket.accept();
-                SocketHandler socketHandler=new SocketHandler(socket);
+                byte[] receiveData=new byte[1024];
+                DatagramPacket receivePacket=new DatagramPacket(receiveData,receiveData.length);
+                serverSocket.receive(receivePacket);
+                String message=new String(receivePacket.getData());
+                if(!message.trim().equals("Connect to VCam")){
+                    continue;
+                }
+                SocketHandler socketHandler=new SocketHandler(serverSocket,receivePacket.getAddress(),receivePacket.getPort());
                 socketSet.add(socketHandler);
                 socketHandler.start();
             }
@@ -23,44 +31,32 @@ public class SocketManager{
             e.printStackTrace();
         }
     }
-
-    public static void SendData(byte[] imageData){
-        for(SocketHandler socketHandeler : socketSet){
-            socketHandeler.SetImageData(imageData);
-        }
-    }
 }
 
 class SocketHandler extends Thread{
-    private Socket socket;
-    private DataOutputStream dataOutputStream;
-    private byte[] imageData;
+    private DatagramSocket serverSocket;
+    private InetAddress clientAddress;
+    private int clientPort;
 
-    public SocketHandler(Socket _socket) {
-        try {
-            this.socket = _socket;
-            this.dataOutputStream=new DataOutputStream(this.socket.getOutputStream());
-            this.imageData=null;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
+    public SocketHandler(DatagramSocket _socket, InetAddress _clientAddress, int _clientPort) {
+        this.serverSocket=_socket;
+        this.clientAddress=_clientAddress;
+        this.clientPort=_clientPort;
     }
     public void run(){
         byte[] dataToSend;
-        while (!socket.isClosed()){
-            synchronized (this){
-                if(imageData==null) continue;
-                dataToSend=this.imageData;
-                imageData=null;
-            }
+        while (true){
+            dataToSend=SocketManager.dataToSend;
             try{
-                dataOutputStream.writeInt(dataToSend.length);
-                dataOutputStream.write(dataToSend);
+                DatagramPacket sendPacket=new DatagramPacket(dataToSend,dataToSend.length,clientAddress,clientPort);
+                serverSocket.send(sendPacket);
+                Thread.sleep(70);
             }catch (Exception e){
+                e.printStackTrace();
             }
         }
     }
-    public synchronized void SetImageData(byte[] image){
-        this.imageData=image;
+    public InetAddress getClientAddress(){
+        return this.clientAddress;
     }
 }

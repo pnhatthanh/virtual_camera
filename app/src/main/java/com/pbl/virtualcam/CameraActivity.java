@@ -115,8 +115,10 @@ public class CameraActivity extends AppCompatActivity {
                 int lensFacing= characteristics.get(CameraCharacteristics.LENS_FACING);
                 if (!isFrontCamera && lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
                     cameraID =cameraId;
+                    sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                 } else if (isFrontCamera && lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
                     cameraID = cameraId;
+                    sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                 }
             }
         } catch (Exception e) {
@@ -190,7 +192,7 @@ public class CameraActivity extends AppCompatActivity {
                 buffer.get(bytes);
                 bytes = compressAndProcessImage(bytes);
                 if(isPlay)
-                    SocketManager.SendData(bytes);
+                    SocketManager.dataToSend=bytes;
                 image.close();
             }
         }, null);
@@ -272,7 +274,12 @@ public class CameraActivity extends AppCompatActivity {
     }
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
         Matrix matrix = new Matrix();
-        matrix.postRotate(orientation);
+        if(isFrontCamera){
+            matrix.preScale(-1.0f,1.0f);
+            matrix.postRotate(orientation+180);
+        }
+        else
+            matrix.postRotate(orientation);
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 }
