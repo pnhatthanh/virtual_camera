@@ -32,8 +32,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -48,7 +51,6 @@ public class CameraActivity extends AppCompatActivity {
     private ImageReader imageReader;
     private Integer sensorOrientation = 0;
     private boolean isPlay=true;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -191,10 +193,12 @@ public class CameraActivity extends AppCompatActivity {
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
                 bytes = compressAndProcessImage(bytes);
-                if(isPlay)
-                    SocketManager.dataToSend=bytes;
+                if(isPlay){
+                    SocketManager.imgByte = bytes;
+                }
                 image.close();
             }
+
         }, null);
 
         try {
@@ -260,26 +264,36 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     // Compress and process the captured image
-    private byte[] compressAndProcessImage(byte[] imageBytes) {
+    private byte[] compressAndProcessImage(byte[] imageBytes)  {
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         bitmap = rotateBitmap(bitmap, sensorOrientation);
 
         // Compress the bitmap to JPEG with 75% quality
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
-        return byteArrayOutputStream.toByteArray();
+        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
+        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
+
+        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+        GZIPOutputStream gzipOutputStream = null;
+        try {
+            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
+            gzipOutputStream.write(jpegBytes);
+            gzipOutputStream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return gzipByteArrayStream.toByteArray();
 
 
     }
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
         Matrix matrix = new Matrix();
-        if(isFrontCamera){
-            matrix.preScale(-1.0f,1.0f);
-            matrix.postRotate(orientation+180);
+        matrix.postRotate(orientation);
+        if(!isFrontCamera){
+            matrix.preScale(1.0f,-1.0f);
         }
-        else
-            matrix.postRotate(orientation);
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 }
