@@ -1,6 +1,8 @@
 package com.pbl.virtualcam;
 
 import static android.Manifest.permission.CAMERA;
+
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -20,6 +22,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
@@ -32,8 +35,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -82,15 +88,21 @@ public class CameraActivity extends AppCompatActivity {
             }
             toast.show();
         });
+        Button settingButton=findViewById(R.id.setting_btn);
+        settingButton.setOnClickListener(e->{
+            Intent intent=new Intent(CameraActivity.this,SettingActivity.class);
+            startActivity(intent);
+        });
 
         new Thread(()->{
             try{
                 new SocketManager(8888);
             }catch(Exception e) {
-                e.printStackTrace();
+                Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
         }).start();
     }
+
     private void initializeCamera() {
         textureView = findViewById(R.id.view);
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
@@ -259,7 +271,6 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-    // Compress and process the captured image
     private byte[] compressAndProcessImage(byte[] imageBytes) {
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
@@ -267,19 +278,47 @@ public class CameraActivity extends AppCompatActivity {
 
         // Compress the bitmap to JPEG with 75% quality
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
-        return byteArrayOutputStream.toByteArray();
+        bitmap.compress(Bitmap.CompressFormat.JPEG,
+                SocketManager.getCompressQuality(),
+                byteArrayOutputStream
+        );
+        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
+
+        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+        GZIPOutputStream gzipOutputStream = null;
+        try {
+            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
+            gzipOutputStream.write(jpegBytes);
+            gzipOutputStream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return gzipByteArrayStream.toByteArray();
 
 
     }
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
         Matrix matrix = new Matrix();
-        if(isFrontCamera){
-            matrix.preScale(-1.0f,1.0f);
-            matrix.postRotate(orientation+180);
+        if(isFrontCamera) {
+            matrix.preScale(1.0f, -1.0f);
         }
-        else
-            matrix.postRotate(orientation);
+        matrix.postRotate(orientation);
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
+
+    private void closeCamera() {
+        if (myCameraCaptureSession != null) {
+            myCameraCaptureSession.close();
+            myCameraCaptureSession = null;
+        }
+        if (myCameraDevice != null) {
+            myCameraDevice.close();
+            myCameraDevice = null;
+        }
+        if (imageReader != null) {
+            imageReader.close();
+            imageReader = null;
+        }
     }
 }

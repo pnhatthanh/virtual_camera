@@ -1,6 +1,6 @@
 package com.pbl.virtualcam;
 
-import android.widget.Toast;
+import android.util.Log;
 
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -31,12 +31,17 @@ public class SocketManager{
             e.printStackTrace();
         }
     }
+    public static int getCompressQuality(){
+        return SocketHandler.quality;
+    }
 }
 
 class SocketHandler extends Thread{
     private DatagramSocket serverSocket;
     private InetAddress clientAddress;
     private int clientPort;
+    private long  lastSent=0;
+    public static int quality=75;
 
     public SocketHandler(DatagramSocket _socket, InetAddress _clientAddress, int _clientPort) {
         this.serverSocket=_socket;
@@ -48,9 +53,35 @@ class SocketHandler extends Thread{
         while (true){
             dataToSend=SocketManager.dataToSend;
             try{
-                DatagramPacket sendPacket=new DatagramPacket(dataToSend,dataToSend.length,clientAddress,clientPort);
-                serverSocket.send(sendPacket);
-                Thread.sleep(70);
+                int packetSize = 1024;
+
+                int len = dataToSend.length;
+                if(this==SocketManager.socketSet.get(0)){
+                    for (int i = 0; i < len; i += packetSize){
+                        int length = Math.min(len - i, packetSize);
+                        byte[] packet = new byte[length];
+                        System.arraycopy(dataToSend, i, packet, 0, length);
+                        DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, this.clientAddress,this.clientPort);
+                        long start=System.nanoTime();
+                        this.serverSocket.send(datagramPacket);
+                        long takeTime=System.nanoTime()-start;
+                        if(System.currentTimeMillis()-this.lastSent>=4000){
+                            setQuality(packet.length,(double) takeTime/1000000);
+                            this.lastSent=System.currentTimeMillis();
+                        }
+                    }
+                }else{
+                    for (int i = 0; i < len; i += packetSize){
+                        int length = Math.min(len - i, packetSize);
+                        byte[] packet = new byte[length];
+                        System.arraycopy(dataToSend, i, packet, 0, length);
+                        DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, this.clientAddress,this.clientPort);
+                        this.serverSocket.send(datagramPacket);
+                    }
+                }
+                DatagramPacket datagramPacket = new DatagramPacket(new byte[]{1}, 1, this.clientAddress,this.clientPort);
+                this.serverSocket.send(datagramPacket);
+                Thread.sleep(100);
             }catch (Exception e){
                 e.printStackTrace();
             }
@@ -58,5 +89,18 @@ class SocketHandler extends Thread{
     }
     public InetAddress getClientAddress(){
         return this.clientAddress;
+    }
+
+    private void setQuality(int dataSize, double takenTime){
+        //kB
+        double bandWidth =  takenTime==0 ? (double) dataSize*1000/1024 : (dataSize*1000)/(1024*takenTime);
+        Log.i("bandwidth: ",bandWidth+"");
+        if(bandWidth>50000){
+            quality=90;
+        }else if(bandWidth>=30000&& bandWidth<=50000){
+            quality=75;
+        }else if(bandWidth<30000){
+            quality=50;
+        }
     }
 }
