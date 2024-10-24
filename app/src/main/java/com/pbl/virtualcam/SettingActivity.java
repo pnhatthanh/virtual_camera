@@ -18,7 +18,7 @@ public class SettingActivity extends AppCompatActivity {
     TextView tvQuality;
     TextView tvSize ;
     private final String[] orientations = {"Phong cảnh", "Chân dung"};
-    private final String[] sizes={"640*480","960*540","1280*720", "1920*1080"};
+    private final String[] sizes={"640*480","960*540", "1920*1080"};
     private final String[] listQuality={"Auto","Thấp","Trung bình", "Cao"};
     private int selectedOrientation;
     private int selectedSize;
@@ -36,12 +36,9 @@ public class SettingActivity extends AppCompatActivity {
             return insets;
         });
         setting=new SettingStorage(this);
-        selectedQuality= !Arrays.asList(listQuality).contains(setting.GetValue(ValueSetting.Quality))
-                ? 0 : Arrays.asList(listQuality).indexOf(setting.GetValue(ValueSetting.Quality));
-        selectedSize= !Arrays.asList(sizes).contains(setting.GetValue(ValueSetting.Size))
-                ? 0 : Arrays.asList(sizes).indexOf(setting.GetValue(ValueSetting.Size));
-        selectedOrientation= !Arrays.asList(orientations).contains(setting.GetValue(ValueSetting.Orientation))
-                ? 0 : Arrays.asList(orientations).indexOf(setting.GetValue(ValueSetting.Orientation));
+        selectedQuality= Arrays.asList(listQuality).indexOf(setting.GetValue(ValueSetting.Quality,"Auto"));
+        selectedSize= Arrays.asList(sizes).indexOf(setting.GetValue(ValueSetting.Size,"640*480"));
+        selectedOrientation= Arrays.asList(orientations).indexOf(setting.GetValue(ValueSetting.Orientation,"Phong cảnh"));
 
         tvOrientation = findViewById(R.id.tv_selected_orientation);
         tvQuality= findViewById(R.id.tv_selected_quality);
@@ -77,7 +74,9 @@ public class SettingActivity extends AppCompatActivity {
     private void showSizeDialog(){
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Kích cỡ video");
-        builder.setSingleChoiceItems(sizes, selectedSize, (dialog, which) -> {});
+        builder.setSingleChoiceItems(sizes, selectedSize, (dialog, which) -> {
+            selectedSize = which;
+        });
         builder.setPositiveButton("OK", (dialog, which) -> {
             tvSize.setText(sizes[selectedSize]);
             setting.SetValue(ValueSetting.Size,sizes[selectedSize]);

@@ -13,7 +13,7 @@ public class SettingStorage {
         editor.putString(key,value);
         editor.apply();
     }
-    public String GetValue(String key){
-        return sharedPreferences.getString(key,"");
+    public String GetValue(String key,String defaultValue){
+        return sharedPreferences.getString(key,defaultValue);
     }
 }

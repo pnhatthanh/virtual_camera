@@ -11,9 +11,11 @@ public class SocketManager{
     private DatagramSocket serverSocket;
     public static Vector<SocketHandler> socketSet=new Vector<SocketHandler>();
     static byte[] dataToSend;
+    private static  SettingStorage setting;
 
-    public SocketManager(int port){
+    public SocketManager(int port, SettingStorage _setting){
         try{
+            setting= _setting;
             serverSocket=new DatagramSocket(port);
             while(true){
                 byte[] receiveData=new byte[1024];
@@ -32,7 +34,17 @@ public class SocketManager{
         }
     }
     public static int getCompressQuality(){
-        return SocketHandler.quality;
+        String quality=setting.GetValue(ValueSetting.Quality,"Auto");
+        switch (quality){
+            case "Cao":
+                return 90;
+            case "Thấp":
+                return 50;
+            case "Trung bình":
+                return 75;
+            default:
+                return SocketHandler.quality;
+        }
     }
 }
 
@@ -54,21 +66,20 @@ class SocketHandler extends Thread{
             dataToSend=SocketManager.dataToSend;
             try{
                 int packetSize = 1024;
-
                 int len = dataToSend.length;
                 if(this==SocketManager.socketSet.get(0)){
+                    long start=System.nanoTime();
                     for (int i = 0; i < len; i += packetSize){
                         int length = Math.min(len - i, packetSize);
                         byte[] packet = new byte[length];
                         System.arraycopy(dataToSend, i, packet, 0, length);
                         DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, this.clientAddress,this.clientPort);
-                        long start=System.nanoTime();
                         this.serverSocket.send(datagramPacket);
-                        long takeTime=System.nanoTime()-start;
-                        if(System.currentTimeMillis()-this.lastSent>=4000){
-                            setQuality(packet.length,(double) takeTime/1000000);
-                            this.lastSent=System.currentTimeMillis();
-                        }
+                    }
+                    long takeTime=System.nanoTime()-start;
+                    if(System.currentTimeMillis()-this.lastSent>=5000){
+                        setQuality(len,(double) takeTime/1000000);
+                        this.lastSent=System.currentTimeMillis();
                     }
                 }else{
                     for (int i = 0; i < len; i += packetSize){
@@ -97,7 +108,7 @@ class SocketHandler extends Thread{
         Log.i("bandwidth: ",bandWidth+"");
         if(bandWidth>50000){
             quality=90;
-        }else if(bandWidth>=30000&& bandWidth<=50000){
+        }else if(bandWidth >= 30000 && bandWidth <= 50000){
             quality=75;
         }else if(bandWidth<30000){
             quality=50;

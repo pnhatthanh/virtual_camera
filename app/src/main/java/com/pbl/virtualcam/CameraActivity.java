@@ -45,7 +45,7 @@ public class CameraActivity extends AppCompatActivity {
 
     private static final int CAMERA_REQUEST_CODE=100;
     private TextureView textureView;
-    private boolean isFrontCamera =false;
+    private boolean isFrontCamera;
     private CameraCaptureSession myCameraCaptureSession;
     private String cameraID;
     private CameraManager cameraManager;
@@ -54,6 +54,8 @@ public class CameraActivity extends AppCompatActivity {
     private ImageReader imageReader;
     private Integer sensorOrientation = 0;
     private boolean isPlay=true;
+    private SettingStorage setting;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -66,6 +68,7 @@ public class CameraActivity extends AppCompatActivity {
                     insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom);
             return insets;
         });
+        setting=new SettingStorage(this);
         if (ActivityCompat.checkSelfPermission(this, CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{CAMERA}, CAMERA_REQUEST_CODE);
         } else {
@@ -96,7 +99,7 @@ public class CameraActivity extends AppCompatActivity {
 
         new Thread(()->{
             try{
-                new SocketManager(8888);
+                new SocketManager(8888,setting);
             }catch(Exception e) {
                 Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
@@ -108,7 +111,14 @@ public class CameraActivity extends AppCompatActivity {
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         textureView.setSurfaceTextureListener(textureListener);
         try {
-            cameraID = cameraManager.getCameraIdList()[0];
+            String a=setting.GetValue(ValueSetting.Orientation,"Phong cảnh");
+            if(setting.GetValue(ValueSetting.Orientation,"Phong cảnh").equals("Phong cảnh")){
+                cameraID = cameraManager.getCameraIdList()[0];
+                isFrontCamera=false;
+            }else{
+                cameraID = cameraManager.getCameraIdList()[1];
+                isFrontCamera=true;
+            }
             CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraID);
             sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (CameraAccessException e) {
@@ -122,17 +132,15 @@ public class CameraActivity extends AppCompatActivity {
         }
         try {
             isFrontCamera=!isFrontCamera;
-            for (String cameraId : cameraManager.getCameraIdList()) {
-                CameraCharacteristics characteristics= cameraManager.getCameraCharacteristics(cameraId);
-                int lensFacing= characteristics.get(CameraCharacteristics.LENS_FACING);
-                if (!isFrontCamera && lensFacing == CameraCharacteristics.LENS_FACING_BACK) {
-                    cameraID =cameraId;
-                    sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
-                } else if (isFrontCamera && lensFacing == CameraCharacteristics.LENS_FACING_FRONT) {
-                    cameraID = cameraId;
-                    sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
-                }
+            if(isFrontCamera){
+                cameraID =cameraManager.getCameraIdList()[1];
+                setting.SetValue(ValueSetting.Orientation,"Chân dung");
+            }else{
+                cameraID =cameraManager.getCameraIdList()[0];
+                setting.SetValue(ValueSetting.Orientation,"Phong cảnh");
             }
+            CameraCharacteristics characteristics= cameraManager.getCameraCharacteristics(cameraID);
+            sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -189,11 +197,14 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void StartCameraPreview() {
+        String[] size=setting.GetValue(ValueSetting.Size,"640*480").split("\\*");
+        int height=Integer.parseInt(size[0]);
+        int width=Integer.parseInt(size[1]);
         SurfaceTexture surfaceTexture = textureView.getSurfaceTexture();
-        surfaceTexture.setDefaultBufferSize(textureView.getWidth(), textureView.getHeight());
+        surfaceTexture.setDefaultBufferSize(width, height);
         Surface surface = new Surface(surfaceTexture);
 
-        imageReader=ImageReader.newInstance(640, 480, ImageFormat.JPEG, 2);
+        imageReader=ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
         Surface imageReaderSurface=imageReader.getSurface();
 
         imageReader.setOnImageAvailableListener(reader ->{
@@ -276,8 +287,8 @@ public class CameraActivity extends AppCompatActivity {
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         bitmap = rotateBitmap(bitmap, sensorOrientation);
 
-        // Compress the bitmap to JPEG with 75% quality
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
         bitmap.compress(Bitmap.CompressFormat.JPEG,
                 SocketManager.getCompressQuality(),
                 byteArrayOutputStream
