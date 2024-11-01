@@ -34,8 +34,11 @@ import androidx.core.view.WindowInsetsCompat;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.List;
+import java.util.Vector;
 import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
@@ -183,7 +186,7 @@ public class CameraActivity extends AppCompatActivity {
         surfaceTexture.setDefaultBufferSize(textureView.getWidth(), textureView.getHeight());
         Surface surface = new Surface(surfaceTexture);
 
-        imageReader=ImageReader.newInstance(640, 480, ImageFormat.JPEG, 2);
+        imageReader=ImageReader.newInstance(480, 640, ImageFormat.JPEG, 2);
         Surface imageReaderSurface=imageReader.getSurface();
 
         imageReader.setOnImageAvailableListener(reader ->{
@@ -192,9 +195,10 @@ public class CameraActivity extends AppCompatActivity {
                 ByteBuffer buffer= image.getPlanes()[0].getBuffer();
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
-                bytes = compressAndProcessImage(bytes);
+                Bitmap bitmap = compressAndProcessImage(bytes);
                 if(isPlay){
-                    SocketManager.imgByte = bytes;
+                    SocketManager.timeStamp = new Date().getTime();
+                    SocketManager.bitmap = bitmap;
                 }
                 image.close();
             }
@@ -264,27 +268,26 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     // Compress and process the captured image
-    private byte[] compressAndProcessImage(byte[] imageBytes)  {
+    private Bitmap compressAndProcessImage(byte[] imageBytes)  {
 
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         bitmap = rotateBitmap(bitmap, sensorOrientation);
 
-        // Compress the bitmap to JPEG with 75% quality
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
-        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
+//        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//        bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+//        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
+//
+//        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+//        GZIPOutputStream gzipOutputStream = null;
+//        try {
+//            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
+//            gzipOutputStream.write(jpegBytes);
+//            gzipOutputStream.close();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
 
-        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
-        GZIPOutputStream gzipOutputStream = null;
-        try {
-            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-            gzipOutputStream.write(jpegBytes);
-            gzipOutputStream.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return gzipByteArrayStream.toByteArray();
+        return bitmap;
 
 
     }
@@ -296,4 +299,6 @@ public class CameraActivity extends AppCompatActivity {
         }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
+
+
 }
