@@ -126,6 +126,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/devices"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
@@ -142,9 +143,10 @@
                 android:textSize="20sp" />
 
             <TextView
+                android:id="@+id/tv_equipments"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="5 thiết bị"
+                android:text="0 thiết bị"
                 android:textColor="#615D5D"
                 android:textSize="18sp" />
         </LinearLayout>

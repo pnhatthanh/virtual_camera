@@ -1,7 +1,7 @@
 package com.pbl.virtualcam;
 
-import android.util.Log;
-
+import android.graphics.Bitmap;
+import java.io.ByteArrayOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -9,14 +9,16 @@ import java.util.Vector;
 
 public class SocketManager{
     private DatagramSocket serverSocket;
-    public static Vector<SocketHandler> socketSet=new Vector<SocketHandler>();
-    static byte[] dataToSend;
-    private static  SettingStorage setting;
+    public static Vector<SocketHandler> socketSet= new Vector<>();
+    public static long timeStamp=-1;
+    public static Bitmap bitmap=null;
+    public static byte[][][] listImageByte=new byte[2][2][];
 
-    public SocketManager(int port, SettingStorage _setting){
+    public SocketManager(int port){
         try{
-            setting= _setting;
             serverSocket=new DatagramSocket(port);
+            Thread process= new Thread(()->compressAndProcessImage());
+            process.start();
             while(true){
                 byte[] receiveData=new byte[1024];
                 DatagramPacket receivePacket=new DatagramPacket(receiveData,receiveData.length);
@@ -33,27 +35,41 @@ public class SocketManager{
             e.printStackTrace();
         }
     }
-    public static int getCompressQuality(){
-        String quality=setting.GetValue(ValueSetting.Quality,"Auto");
-        switch (quality){
-            case "Cao":
-                return 90;
-            case "Thấp":
-                return 50;
-            case "Trung bình":
-                return 75;
-            default:
-                return SocketHandler.quality;
+
+    private static void compressAndProcessImage(){
+        while (true){
+            int[] pixels = new int[640*480];
+            Bitmap[][] blocks=new Bitmap[2][2];
+            Bitmap _bitmap=bitmap;
+            if(_bitmap==null)
+                continue;
+            int blockWidth = _bitmap.getWidth() / 2;
+            int blockHeight = _bitmap.getHeight() / 2;
+            _bitmap.getPixels(pixels,0,_bitmap.getWidth(),0,0,_bitmap.getWidth(), _bitmap.getHeight());
+            for (int x = 0; x < _bitmap.getWidth(); x++){
+                for (int y = 0; y < _bitmap.getHeight(); y++){
+                    if (blocks[x%2][y%2]==null){
+                        blocks[x%2][y%2] = Bitmap.createBitmap(blockWidth,blockHeight, Bitmap.Config.ARGB_8888);
+                    }
+                    blocks[x%2][y%2].setPixel(x/2,y/2,pixels[y * _bitmap.getWidth() + x]);
+                }
+            }
+            for (int row = 0; row < 2; row++) {
+                for (int col = 0; col < 2; col++) {
+                    ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                    blocks[row][col].compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+                    listImageByte[row][col] = byteArrayOutputStream.toByteArray();
+                }
+            }
         }
     }
 }
-
 class SocketHandler extends Thread{
     private DatagramSocket serverSocket;
     private InetAddress clientAddress;
     private int clientPort;
-    private long  lastSent=0;
-    public static int quality=75;
+    private byte[][][] listImageByte;
+
 
     public SocketHandler(DatagramSocket _socket, InetAddress _clientAddress, int _clientPort) {
         this.serverSocket=_socket;
@@ -61,57 +77,29 @@ class SocketHandler extends Thread{
         this.clientPort=_clientPort;
     }
     public void run(){
-        byte[] dataToSend;
+        this.listImageByte = SocketManager.listImageByte;
         while (true){
-            dataToSend=SocketManager.dataToSend;
             try{
-                int packetSize = 1024;
-                int len = dataToSend.length;
-                if(this==SocketManager.socketSet.get(0)){
-                    long start=System.nanoTime();
-                    for (int i = 0; i < len; i += packetSize){
-                        int length = Math.min(len - i, packetSize);
-                        byte[] packet = new byte[length];
-                        System.arraycopy(dataToSend, i, packet, 0, length);
-                        DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, this.clientAddress,this.clientPort);
-                        this.serverSocket.send(datagramPacket);
-                    }
-                    long takeTime=System.nanoTime()-start;
-                    if(System.currentTimeMillis()-this.lastSent>=5000){
-                        setQuality(len,(double) takeTime/1000000);
-                        this.lastSent=System.currentTimeMillis();
-                    }
-                }else{
-                    for (int i = 0; i < len; i += packetSize){
-                        int length = Math.min(len - i, packetSize);
-                        byte[] packet = new byte[length];
-                        System.arraycopy(dataToSend, i, packet, 0, length);
-                        DatagramPacket datagramPacket = new DatagramPacket(packet, packet.length, this.clientAddress,this.clientPort);
-                        this.serverSocket.send(datagramPacket);
+                long timeStamp = SocketManager.timeStamp;
+                for (int row = 0; row < 2; row++) {
+                    for (int col = 0; col < 2; col++) {
+                        int length = this.listImageByte[row][col].length;
+                        byte[] dataToSend = new byte[length + 9];
+                        dataToSend[0] = (byte) ( row<<4 | col);
+                        for (int j = 1; j <= 8; j++) {
+                            dataToSend[j] = (byte) ((timeStamp >> (9 - j - 1) * 8) & 255);
+                        }
+                        System.arraycopy(this.listImageByte[row][col], 0, dataToSend, 9, length);
+                        DatagramPacket packet = new DatagramPacket(dataToSend, dataToSend.length, this.clientAddress, this.clientPort);
+                        this.serverSocket.send(packet);
                     }
                 }
-                DatagramPacket datagramPacket = new DatagramPacket(new byte[]{1}, 1, this.clientAddress,this.clientPort);
-                this.serverSocket.send(datagramPacket);
-                Thread.sleep(100);
             }catch (Exception e){
                 e.printStackTrace();
             }
         }
     }
-    public InetAddress getClientAddress(){
-        return this.clientAddress;
-    }
-
-    private void setQuality(int dataSize, double takenTime){
-        //kB
-        double bandWidth =  takenTime==0 ? (double) dataSize*1000/1024 : (dataSize*1000)/(1024*takenTime);
-        Log.i("bandwidth: ",bandWidth+"");
-        if(bandWidth>50000){
-            quality=90;
-        }else if(bandWidth >= 30000 && bandWidth <= 50000){
-            quality=75;
-        }else if(bandWidth<30000){
-            quality=50;
-        }
+    public String getNameClient(){
+        return this.clientAddress.getHostAddress();
     }
 }

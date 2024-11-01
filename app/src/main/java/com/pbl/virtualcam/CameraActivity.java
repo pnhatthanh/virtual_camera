@@ -22,7 +22,6 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
@@ -33,13 +32,9 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.zip.GZIPOutputStream;
+import java.util.Date;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -99,19 +94,17 @@ public class CameraActivity extends AppCompatActivity {
 
         new Thread(()->{
             try{
-                new SocketManager(8888,setting);
+                new SocketManager(8888);
             }catch(Exception e) {
                 Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
         }).start();
     }
-
     private void initializeCamera() {
         textureView = findViewById(R.id.view);
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         textureView.setSurfaceTextureListener(textureListener);
         try {
-            String a=setting.GetValue(ValueSetting.Orientation,"Phong cảnh");
             if(setting.GetValue(ValueSetting.Orientation,"Phong cảnh").equals("Phong cảnh")){
                 cameraID = cameraManager.getCameraIdList()[0];
                 isFrontCamera=false;
@@ -213,9 +206,11 @@ public class CameraActivity extends AppCompatActivity {
                 ByteBuffer buffer= image.getPlanes()[0].getBuffer();
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
-                bytes = compressAndProcessImage(bytes);
-                if(isPlay)
-                    SocketManager.dataToSend=bytes;
+                Bitmap bitmap = compressAndProcessImage(bytes);
+                if(isPlay){
+                    SocketManager.timeStamp=new Date().getTime();
+                    SocketManager.bitmap=bitmap;
+                }
                 image.close();
             }
         }, null);
@@ -282,33 +277,12 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-    private byte[] compressAndProcessImage(byte[] imageBytes) {
-
+    private Bitmap compressAndProcessImage(byte[] imageBytes) {
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         bitmap = rotateBitmap(bitmap, sensorOrientation);
-
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
-        bitmap.compress(Bitmap.CompressFormat.JPEG,
-                SocketManager.getCompressQuality(),
-                byteArrayOutputStream
-        );
-        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
-
-        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
-        GZIPOutputStream gzipOutputStream = null;
-        try {
-            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-            gzipOutputStream.write(jpegBytes);
-            gzipOutputStream.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return gzipByteArrayStream.toByteArray();
-
-
+        return bitmap;
     }
+
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
         Matrix matrix = new Matrix();
         if(isFrontCamera) {
