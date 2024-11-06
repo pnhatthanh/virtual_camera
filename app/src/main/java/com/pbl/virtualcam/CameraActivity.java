@@ -39,6 +39,7 @@ import java.io.IOException;
 import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
@@ -99,7 +100,7 @@ public class CameraActivity extends AppCompatActivity {
 
         new Thread(()->{
             try{
-                new SocketManager(8888,setting);
+                new SocketManager(8888);
             }catch(Exception e) {
                 Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
@@ -213,9 +214,9 @@ public class CameraActivity extends AppCompatActivity {
                 ByteBuffer buffer= image.getPlanes()[0].getBuffer();
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
-                bytes = compressAndProcessImage(bytes);
                 if(isPlay)
-                    SocketManager.dataToSend=bytes;
+                    SocketManager.timeStamp = new Date().getTime();
+                    SocketManager.bytes = bytes;
                 image.close();
             }
         }, null);
@@ -282,41 +283,41 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-    private byte[] compressAndProcessImage(byte[] imageBytes) {
-
-        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-        bitmap = rotateBitmap(bitmap, sensorOrientation);
-
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
-        bitmap.compress(Bitmap.CompressFormat.JPEG,
-                SocketManager.getCompressQuality(),
-                byteArrayOutputStream
-        );
-        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
-
-        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
-        GZIPOutputStream gzipOutputStream = null;
-        try {
-            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-            gzipOutputStream.write(jpegBytes);
-            gzipOutputStream.close();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-
-        return gzipByteArrayStream.toByteArray();
-
-
-    }
-    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
-        Matrix matrix = new Matrix();
-        if(isFrontCamera) {
-            matrix.preScale(1.0f, -1.0f);
-        }
-        matrix.postRotate(orientation);
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-    }
+//    private byte[] compressAndProcessImage(byte[] imageBytes) {
+//
+//        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+//        bitmap = rotateBitmap(bitmap, sensorOrientation);
+//
+//        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
+//        bitmap.compress(Bitmap.CompressFormat.JPEG,
+//                SocketManager.getCompressQuality(),
+//                byteArrayOutputStream
+//        );
+//        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
+//
+//        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+//        GZIPOutputStream gzipOutputStream = null;
+//        try {
+//            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
+//            gzipOutputStream.write(jpegBytes);
+//            gzipOutputStream.close();
+//        } catch (IOException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//        return gzipByteArrayStream.toByteArray();
+//
+//
+//    }
+//    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
+//        Matrix matrix = new Matrix();
+//        if(isFrontCamera) {
+//            matrix.preScale(1.0f, -1.0f);
+//        }
+//        matrix.postRotate(orientation);
+//        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+//    }
 
     private void closeCamera() {
         if (myCameraCaptureSession != null) {
