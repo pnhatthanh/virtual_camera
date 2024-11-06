@@ -11,17 +11,14 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 public class SettingActivity extends AppCompatActivity {
     TextView tvOrientation;
     TextView tvQuality;
     TextView tvSize ;
-    TextView tvEquipments;
     private final String[] orientations = {"Phong cảnh", "Chân dung"};
-    private final String[] sizes={"640*360","640*480","960*540"};
+    private final String[] sizes={"640*480","960*540", "1920*1080"};
     private final String[] listQuality={"Auto","Thấp","Trung bình", "Cao"};
     private int selectedOrientation;
     private int selectedSize;
@@ -46,12 +43,9 @@ public class SettingActivity extends AppCompatActivity {
         tvOrientation = findViewById(R.id.tv_selected_orientation);
         tvQuality= findViewById(R.id.tv_selected_quality);
         tvSize = findViewById(R.id.tv_selected_size);
-        tvEquipments=findViewById(R.id.tv_equipments);
-
         tvOrientation.setText(orientations[selectedOrientation]);
         tvSize.setText(sizes[selectedSize]);
         tvQuality.setText(listQuality[selectedQuality]);
-        tvEquipments.setText(SocketManager.socketSet.size()+" thiết bị");
 
         LinearLayout videoSize = findViewById(R.id.tv_video_size);
         videoSize.setOnClickListener(e-> showSizeDialog());
@@ -61,9 +55,6 @@ public class SettingActivity extends AppCompatActivity {
 
         LinearLayout videoQuality=findViewById(R.id.video_quality);
         videoQuality.setOnClickListener(e->showQuality());
-
-        LinearLayout devices=findViewById(R.id.devices);
-        devices.setOnClickListener(e->showDevice());
     }
     private void showOrientationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -106,19 +97,6 @@ public class SettingActivity extends AppCompatActivity {
             setting.SetValue(ValueSetting.Quality,listQuality[selectedQuality]);
             dialog.dismiss();
             Toast.makeText(this, "Đã chọn: " + listQuality[selectedQuality], Toast.LENGTH_SHORT).show();
-        });
-        AlertDialog dialog = builder.create();
-        dialog.show();
-    }
-    private void showDevice(){
-        List<String> devices=new ArrayList<>();
-        for(SocketHandler client:SocketManager.socketSet){
-            devices.add(client.getClientAddress());
-        }
-        AlertDialog.Builder builder=new AlertDialog.Builder(this);
-        builder.setTitle("Các thiết bị kết nối");
-        builder.setItems(devices.toArray(new String[0]),(dialog,which)->{
-
         });
         AlertDialog dialog = builder.create();
         dialog.show();

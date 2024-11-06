@@ -22,6 +22,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
@@ -32,9 +33,13 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
-import java.util.Date;
+import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -94,17 +99,19 @@ public class CameraActivity extends AppCompatActivity {
 
         new Thread(()->{
             try{
-                new SocketManager(8888);
+                new SocketManager(8888,setting);
             }catch(Exception e) {
                 Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
         }).start();
     }
+
     private void initializeCamera() {
         textureView = findViewById(R.id.view);
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         textureView.setSurfaceTextureListener(textureListener);
         try {
+            String a=setting.GetValue(ValueSetting.Orientation,"Phong cảnh");
             if(setting.GetValue(ValueSetting.Orientation,"Phong cảnh").equals("Phong cảnh")){
                 cameraID = cameraManager.getCameraIdList()[0];
                 isFrontCamera=false;
@@ -197,7 +204,7 @@ public class CameraActivity extends AppCompatActivity {
         surfaceTexture.setDefaultBufferSize(width, height);
         Surface surface = new Surface(surfaceTexture);
 
-        imageReader=ImageReader.newInstance(480, 640, ImageFormat.JPEG, 2);
+        imageReader=ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
         Surface imageReaderSurface=imageReader.getSurface();
 
         imageReader.setOnImageAvailableListener(reader ->{
@@ -206,10 +213,9 @@ public class CameraActivity extends AppCompatActivity {
                 ByteBuffer buffer= image.getPlanes()[0].getBuffer();
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
-                if(isPlay){
-                    SocketManager.timeStamp = new Date().getTime();
-                    SocketManager.bytes = bytes;
-                }
+                bytes = compressAndProcessImage(bytes);
+                if(isPlay)
+                    SocketManager.dataToSend=bytes;
                 image.close();
             }
         }, null);
@@ -275,20 +281,42 @@ public class CameraActivity extends AppCompatActivity {
             }
         }
     }
-//    private Bitmap compressAndProcessImage(byte[] imageBytes) {
-//        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-//        bitmap = rotateBitmap(bitmap, sensorOrientation);
-//        return bitmap;
-//    }
-//
-//    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
-//        Matrix matrix = new Matrix();
-//        if(isFrontCamera) {
-//            matrix.preScale(1.0f, -1.0f);
-//        }
-//        matrix.postRotate(orientation);
-//        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-//    }
+
+    private byte[] compressAndProcessImage(byte[] imageBytes) {
+
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        bitmap = rotateBitmap(bitmap, sensorOrientation);
+
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
+        bitmap.compress(Bitmap.CompressFormat.JPEG,
+                SocketManager.getCompressQuality(),
+                byteArrayOutputStream
+        );
+        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
+
+        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+        GZIPOutputStream gzipOutputStream = null;
+        try {
+            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
+            gzipOutputStream.write(jpegBytes);
+            gzipOutputStream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        return gzipByteArrayStream.toByteArray();
+
+
+    }
+    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
+        Matrix matrix = new Matrix();
+        if(isFrontCamera) {
+            matrix.preScale(1.0f, -1.0f);
+        }
+        matrix.postRotate(orientation);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
 
     private void closeCamera() {
         if (myCameraCaptureSession != null) {
