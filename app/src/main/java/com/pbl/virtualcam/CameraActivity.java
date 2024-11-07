@@ -112,7 +112,6 @@ public class CameraActivity extends AppCompatActivity {
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         textureView.setSurfaceTextureListener(textureListener);
         try {
-            String a=setting.GetValue(ValueSetting.Orientation,"Phong cảnh");
             if(setting.GetValue(ValueSetting.Orientation,"Phong cảnh").equals("Phong cảnh")){
                 cameraID = cameraManager.getCameraIdList()[0];
                 isFrontCamera=false;
@@ -214,9 +213,10 @@ public class CameraActivity extends AppCompatActivity {
                 ByteBuffer buffer= image.getPlanes()[0].getBuffer();
                 byte[] bytes= new byte[buffer.remaining()];
                 buffer.get(bytes);
-                if(isPlay)
+                if(isPlay){
                     SocketManager.timeStamp = new Date().getTime();
                     SocketManager.bytes = bytes;
+                }
                 image.close();
             }
         }, null);

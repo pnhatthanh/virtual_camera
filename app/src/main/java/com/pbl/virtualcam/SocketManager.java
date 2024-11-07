@@ -22,7 +22,7 @@ public class SocketManager{
                 if(!message.trim().equals("Connect to VCam")){
                     continue;
                 }
-                SocketHandler socketHandler=new SocketHandler(serverSocket,receivePacket.getAddress(),receivePacket.getPort());
+                SocketHandler socketHandler=new SocketHandler(receivePacket.getAddress(),receivePacket.getPort());
                 socketSet.add(socketHandler);
                 socketHandler.start();
             }
@@ -30,7 +30,6 @@ public class SocketManager{
             e.printStackTrace();
         }
     }
-
 }
 
 class SocketHandler extends Thread{
@@ -40,7 +39,7 @@ class SocketHandler extends Thread{
     private int lenPac = 10000;
     private byte[] bytes;
     private long timeStamp;
-    public SocketHandler(DatagramSocket _socket, InetAddress _clientAddress, int _clientPort) {
+    public SocketHandler( InetAddress _clientAddress, int _clientPort) {
         this.clientAddress=_clientAddress;
         this.clientPort=_clientPort;
         try {
@@ -58,7 +57,8 @@ class SocketHandler extends Thread{
                 int numPac = (int)Math.ceil(this.bytes.length*1.0/this.lenPac);
                 for (int i = 0; i<numPac; i++){
                     int realLenPac = this.lenPac;
-                    if (this.bytes.length - i * this.lenPac < realLenPac) realLenPac = this.bytes.length - i * this.lenPac;
+                    if (this.bytes.length - i * this.lenPac < realLenPac)
+                        realLenPac = this.bytes.length - i * this.lenPac;
                     dataToSend[0] = (byte) (i);
                     dataToSend[1] = (byte) numPac;
                     for (int j = 2; j <= 9; j++) {
@@ -74,8 +74,8 @@ class SocketHandler extends Thread{
             }
         }
     }
-    public InetAddress getClientAddress(){
-        return this.clientAddress;
+    public String getClientAddress(){
+        return this.clientAddress.getHostAddress();
     }
 
 }
