@@ -1,10 +1,11 @@
 package com.pbl.virtualcam;
 
+import java.io.ByteArrayOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.net.SocketException;
 import java.util.Vector;
+import java.util.zip.GZIPOutputStream;
 
 public class SocketManager{
     private DatagramSocket serverSocket;
@@ -22,12 +23,25 @@ public class SocketManager{
                 if(!message.trim().equals("Connect to VCam")){
                     continue;
                 }
-                SocketHandler socketHandler=new SocketHandler(receivePacket.getAddress(),receivePacket.getPort());
+                SocketHandler socketHandler=new SocketHandler(serverSocket,receivePacket.getAddress(),receivePacket.getPort());
                 socketSet.add(socketHandler);
                 socketHandler.start();
             }
         }catch (Exception e){
             e.printStackTrace();
+        }
+    }
+    public static byte[] GZipByteData() {
+        if (bytes==null||bytes.length == 0) return null;
+        try {
+            ByteArrayOutputStream gzipByteArrayStream=new ByteArrayOutputStream();
+            GZIPOutputStream gzipOutputStream=new GZIPOutputStream(gzipByteArrayStream);
+            gzipOutputStream.write(bytes);
+            gzipOutputStream.close();
+            return gzipByteArrayStream.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }
@@ -39,20 +53,16 @@ class SocketHandler extends Thread{
     private int lenPac = 10000;
     private byte[] bytes;
     private long timeStamp;
-    public SocketHandler( InetAddress _clientAddress, int _clientPort) {
+    public SocketHandler(DatagramSocket serverSocket, InetAddress _clientAddress, int _clientPort) {
         this.clientAddress=_clientAddress;
         this.clientPort=_clientPort;
-        try {
-            this.serverSocket=new DatagramSocket();
-        } catch (SocketException e) {
-            throw new RuntimeException(e);
-        }
+        this.serverSocket=serverSocket;
     }
     public void run(){
         while (true){
             try{
                 byte[] dataToSend = new byte[lenPac + 10];
-                this.bytes = SocketManager.bytes;
+                this.bytes = SocketManager.GZipByteData();
                 this.timeStamp = SocketManager.timeStamp;
                 int numPac = (int)Math.ceil(this.bytes.length*1.0/this.lenPac);
                 for (int i = 0; i<numPac; i++){

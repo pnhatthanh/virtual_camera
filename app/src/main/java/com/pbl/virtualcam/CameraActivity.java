@@ -18,15 +18,17 @@ import android.hardware.camera2.CameraMetadata;
 import android.hardware.camera2.CaptureRequest;
 import android.hardware.camera2.params.OutputConfiguration;
 import android.hardware.camera2.params.SessionConfiguration;
+import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
 import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
@@ -44,7 +46,7 @@ import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
 
-    private static final int CAMERA_REQUEST_CODE=100;
+    private static final int CAMERA_REQUEST_CODE = 100;
     private TextureView textureView;
     private boolean isFrontCamera;
     private CameraCaptureSession myCameraCaptureSession;
@@ -54,7 +56,7 @@ public class CameraActivity extends AppCompatActivity {
     private CaptureRequest.Builder captureRequestBuilder;
     private ImageReader imageReader;
     private Integer sensorOrientation = 0;
-    private boolean isPlay=true;
+    private boolean isPlay = true;
     private SettingStorage setting;
 
 
@@ -69,18 +71,18 @@ public class CameraActivity extends AppCompatActivity {
                     insets.getInsets(WindowInsetsCompat.Type.systemBars()).bottom);
             return insets;
         });
-        setting=new SettingStorage(this);
+        setting = new SettingStorage(this);
         if (ActivityCompat.checkSelfPermission(this, CAMERA) != PackageManager.PERMISSION_GRANTED) {
             ActivityCompat.requestPermissions(this, new String[]{CAMERA}, CAMERA_REQUEST_CODE);
         } else {
             initializeCamera();
         }
-        Button switchCameraButton=findViewById(R.id.switch_camera);
-        switchCameraButton.setOnClickListener(e-> switchCamera());
+        Button switchCameraButton = findViewById(R.id.switch_camera);
+        switchCameraButton.setOnClickListener(e -> switchCamera());
 
-        Button stopButton=findViewById(R.id.stop);
-        stopButton.setOnClickListener(e->{
-            isPlay=!isPlay;
+        Button stopButton = findViewById(R.id.stop);
+        stopButton.setOnClickListener(e -> {
+            isPlay = !isPlay;
             Toast toast = new Toast(getApplicationContext());
             toast.setDuration(Toast.LENGTH_SHORT);
             if (isPlay) {
@@ -92,16 +94,16 @@ public class CameraActivity extends AppCompatActivity {
             }
             toast.show();
         });
-        Button settingButton=findViewById(R.id.setting_btn);
-        settingButton.setOnClickListener(e->{
-            Intent intent=new Intent(CameraActivity.this,SettingActivity.class);
+        Button settingButton = findViewById(R.id.setting_btn);
+        settingButton.setOnClickListener(e -> {
+            Intent intent = new Intent(CameraActivity.this, SettingActivity.class);
             startActivity(intent);
         });
 
-        new Thread(()->{
-            try{
+        new Thread(() -> {
+            try {
                 new SocketManager(8888);
-            }catch(Exception e) {
+            } catch (Exception e) {
                 Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
         }).start();
@@ -112,12 +114,12 @@ public class CameraActivity extends AppCompatActivity {
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
         textureView.setSurfaceTextureListener(textureListener);
         try {
-            if(setting.GetValue(ValueSetting.Orientation,"Phong cảnh").equals("Phong cảnh")){
+            if (setting.GetValue(ValueSetting.Orientation, "Phong cảnh").equals("Phong cảnh")) {
                 cameraID = cameraManager.getCameraIdList()[0];
-                isFrontCamera=false;
-            }else{
+                isFrontCamera = false;
+            } else {
                 cameraID = cameraManager.getCameraIdList()[1];
-                isFrontCamera=true;
+                isFrontCamera = true;
             }
             CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraID);
             sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
@@ -131,15 +133,15 @@ public class CameraActivity extends AppCompatActivity {
             myCameraDevice.close();
         }
         try {
-            isFrontCamera=!isFrontCamera;
-            if(isFrontCamera){
-                cameraID =cameraManager.getCameraIdList()[1];
-                setting.SetValue(ValueSetting.Orientation,"Chân dung");
-            }else{
-                cameraID =cameraManager.getCameraIdList()[0];
-                setting.SetValue(ValueSetting.Orientation,"Phong cảnh");
+            isFrontCamera = !isFrontCamera;
+            if (isFrontCamera) {
+                cameraID = cameraManager.getCameraIdList()[1];
+                setting.SetValue(ValueSetting.Orientation, "Chân dung");
+            } else {
+                cameraID = cameraManager.getCameraIdList()[0];
+                setting.SetValue(ValueSetting.Orientation, "Phong cảnh");
             }
-            CameraCharacteristics characteristics= cameraManager.getCameraCharacteristics(cameraID);
+            CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraID);
             sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (Exception e) {
             e.printStackTrace();
@@ -154,7 +156,8 @@ public class CameraActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surfaceTexture, int width, int height) {}
+        public void onSurfaceTextureSizeChanged(@NonNull SurfaceTexture surfaceTexture, int width, int height) {
+        }
 
         @Override
         public boolean onSurfaceTextureDestroyed(@NonNull SurfaceTexture surfaceTexture) {
@@ -162,7 +165,8 @@ public class CameraActivity extends AppCompatActivity {
         }
 
         @Override
-        public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surfaceTexture) {}
+        public void onSurfaceTextureUpdated(@NonNull SurfaceTexture surfaceTexture) {
+        }
     };
 
     private CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
@@ -197,32 +201,39 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private void StartCameraPreview() {
-        String[] size=setting.GetValue(ValueSetting.Size,"640*480").split("\\*");
-        int height=Integer.parseInt(size[0]);
-        int width=Integer.parseInt(size[1]);
+        CameraCharacteristics characteristics = null;
+        try {
+            characteristics = cameraManager.getCameraCharacteristics(cameraID);
+        } catch (CameraAccessException e) {
+            e.printStackTrace();
+        }
+        StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+        Size[] sizes = map.getOutputSizes(SurfaceTexture.class);
+        Size bestSize = sizes[0];
         SurfaceTexture surfaceTexture = textureView.getSurfaceTexture();
-        surfaceTexture.setDefaultBufferSize(width, height);
+        String[] size = setting.GetValue(ValueSetting.Size, "800*600").split("\\*");
+        int height = Integer.parseInt(size[0]);
+        int width = Integer.parseInt(size[1]);
+        surfaceTexture.setDefaultBufferSize(bestSize.getWidth(), bestSize.getHeight());
         Surface surface = new Surface(surfaceTexture);
-
-        imageReader=ImageReader.newInstance(width, height, ImageFormat.JPEG, 2);
-        Surface imageReaderSurface=imageReader.getSurface();
-
-        imageReader.setOnImageAvailableListener(reader ->{
+        imageReader = ImageReader.newInstance(720, 720, ImageFormat.JPEG, 2);
+        Surface imageReaderSurface = imageReader.getSurface();
+        imageReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireLatestImage();
-            if (image != null){
-                ByteBuffer buffer= image.getPlanes()[0].getBuffer();
-                byte[] bytes= new byte[buffer.remaining()];
+            if (image != null) {
+                ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                byte[] bytes = new byte[buffer.remaining()];
                 buffer.get(bytes);
-                if(isPlay){
+                if (isPlay) {
                     SocketManager.timeStamp = new Date().getTime();
-                    SocketManager.bytes = bytes;
+                    SocketManager.bytes =compressAndProcessImage(bytes);
                 }
                 image.close();
             }
         }, null);
 
         try {
-            captureRequestBuilder= myCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
+            captureRequestBuilder = myCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
             captureRequestBuilder.addTarget(imageReaderSurface);
 
@@ -263,6 +274,7 @@ public class CameraActivity extends AppCompatActivity {
                             throw new RuntimeException(e);
                         }
                     }
+
                     @Override
                     public void onConfigureFailed(@NonNull CameraCaptureSession cameraCaptureSession) {
                         myCameraCaptureSession = null;
@@ -273,6 +285,7 @@ public class CameraActivity extends AppCompatActivity {
             throw new RuntimeException(e);
         }
     }
+
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
@@ -283,41 +296,31 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-//    private byte[] compressAndProcessImage(byte[] imageBytes) {
-//
-//        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-//        bitmap = rotateBitmap(bitmap, sensorOrientation);
-//
-//        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-//        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
-//        bitmap.compress(Bitmap.CompressFormat.JPEG,
-//                SocketManager.getCompressQuality(),
-//                byteArrayOutputStream
-//        );
-//        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
-//
-//        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
-//        GZIPOutputStream gzipOutputStream = null;
-//        try {
-//            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-//            gzipOutputStream.write(jpegBytes);
-//            gzipOutputStream.close();
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//        return gzipByteArrayStream.toByteArray();
-//
-//
-//    }
-//    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
-//        Matrix matrix = new Matrix();
-//        if(isFrontCamera) {
-//            matrix.preScale(1.0f, -1.0f);
-//        }
-//        matrix.postRotate(orientation);
-//        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
-//    }
+    private byte[] compressAndProcessImage(byte[] imageBytes) {
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        bitmap=rotateBitmap(bitmap,sensorOrientation);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        switch (setting.GetValue(ValueSetting.Quality, "Trung bình")) {
+            case "Thấp":
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
+                break;
+            case "Trung bình":
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
+                break;
+            case "Cao":
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
+                break;
+        }
+        return byteArrayOutputStream.toByteArray();
+    }
+    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
+        Matrix matrix = new Matrix();
+        if(isFrontCamera) {
+            matrix.preScale(1.0f, -1.0f);
+        }
+        matrix.postRotate(orientation);
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+    }
 
     private void closeCamera() {
         if (myCameraCaptureSession != null) {
@@ -334,3 +337,4 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 }
+
