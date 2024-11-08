@@ -215,7 +215,7 @@ public class CameraActivity extends AppCompatActivity {
                 buffer.get(bytes);
                 if(isPlay){
                     SocketManager.timeStamp = new Date().getTime();
-                    SocketManager.bytes = bytes;
+                    SocketManager.bytes = compressAndProcessImage(bytes);
                 }
                 image.close();
             }
@@ -283,33 +283,22 @@ public class CameraActivity extends AppCompatActivity {
         }
     }
 
-//    private byte[] compressAndProcessImage(byte[] imageBytes) {
-//
-//        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-//        bitmap = rotateBitmap(bitmap, sensorOrientation);
-//
-//        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-//        Log.i("Quality Image",SocketManager.getCompressQuality()+"");
-//        bitmap.compress(Bitmap.CompressFormat.JPEG,
-//                SocketManager.getCompressQuality(),
-//                byteArrayOutputStream
-//        );
-//        byte[] jpegBytes  = byteArrayOutputStream.toByteArray();
-//
-//        ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
-//        GZIPOutputStream gzipOutputStream = null;
-//        try {
-//            gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-//            gzipOutputStream.write(jpegBytes);
-//            gzipOutputStream.close();
-//        } catch (IOException e) {
-//            throw new RuntimeException(e);
-//        }
-//
-//        return gzipByteArrayStream.toByteArray();
-//
-//
-//    }
+    private byte[] compressAndProcessImage(byte[] imageBytes) {
+        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        switch (setting.GetValue(ValueSetting.Quality,"Trung bình")){
+            case "Thấp":
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
+                break;
+            case "Trung bình":
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
+                break;
+            case "Cao":
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
+                break;
+        }
+        return byteArrayOutputStream.toByteArray();
+    }
 //    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
 //        Matrix matrix = new Matrix();
 //        if(isFrontCamera) {

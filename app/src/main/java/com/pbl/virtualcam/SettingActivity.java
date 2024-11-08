@@ -2,6 +2,8 @@ package com.pbl.virtualcam;
 
 import android.app.AlertDialog;
 import android.os.Bundle;
+import android.view.View;
+import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -20,9 +22,10 @@ public class SettingActivity extends AppCompatActivity {
     TextView tvQuality;
     TextView tvSize ;
     TextView tvEquipments;
+    Button comeback;
     private final String[] orientations = {"Phong cảnh", "Chân dung"};
-    private final String[] sizes={"640*480","960*540", "1920*1080"};
-    private final String[] listQuality={"Auto","Thấp","Trung bình", "Cao"};
+    private final String[] sizes={"640*480","800*600", "960*540"};
+    private final String[] listQuality={"Thấp","Trung bình", "Cao"};
     private int selectedOrientation;
     private int selectedSize;
     private int selectedQuality;
@@ -39,10 +42,9 @@ public class SettingActivity extends AppCompatActivity {
             return insets;
         });
         setting=new SettingStorage(this);
-        selectedQuality= Arrays.asList(listQuality).indexOf(setting.GetValue(ValueSetting.Quality,"Auto"));
+        selectedQuality= Arrays.asList(listQuality).indexOf(setting.GetValue(ValueSetting.Quality,"Trung bình"));
         selectedSize= Arrays.asList(sizes).indexOf(setting.GetValue(ValueSetting.Size,"640*480"));
-        selectedOrientation= Arrays.asList(orientations).indexOf(setting.GetValue(ValueSetting.Orientation,"Phong cảnh"));
-
+        selectedOrientation= Arrays.asList(orientations).indexOf(setting.GetValue(ValueSetting.Orientation,"Chân dung"));
         tvOrientation = findViewById(R.id.tv_selected_orientation);
         tvQuality= findViewById(R.id.tv_selected_quality);
 
@@ -66,6 +68,14 @@ public class SettingActivity extends AppCompatActivity {
 
         LinearLayout devices=findViewById(R.id.devices);
         devices.setOnClickListener(e->showDevice());
+
+        comeback=findViewById(R.id.comeback);
+        comeback.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                finish();
+            }
+        });
     }
     private void showOrientationDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
