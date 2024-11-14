@@ -67,7 +67,8 @@ class SocketHandler extends Thread{
                 int numPac = (int)Math.ceil(this.bytes.length*1.0/this.lenPac);
                 for (int i = 0; i<numPac; i++){
                     int realLenPac = this.lenPac;
-                    if (this.bytes.length - i * this.lenPac < realLenPac) realLenPac = this.bytes.length - i * this.lenPac;
+                    if (this.bytes.length - i * this.lenPac < realLenPac)
+                        realLenPac = this.bytes.length - i * this.lenPac;
                     dataToSend[0] = (byte) (i);
                     dataToSend[1] = (byte) numPac;
                     for (int j = 2; j <= 9; j++) {
