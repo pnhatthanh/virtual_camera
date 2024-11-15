@@ -23,6 +23,7 @@ import android.media.Image;
 import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
@@ -37,8 +38,6 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Date;
@@ -211,12 +210,12 @@ public class CameraActivity extends AppCompatActivity {
         Size[] sizes = map.getOutputSizes(SurfaceTexture.class);
         Size bestSize = sizes[0];
         SurfaceTexture surfaceTexture = textureView.getSurfaceTexture();
-        String[] size = setting.GetValue(ValueSetting.Size, "800*600").split("\\*");
+        String[] size = setting.GetValue(ValueSetting.Size, "640*480").split("\\*");
         int height = Integer.parseInt(size[0]);
         int width = Integer.parseInt(size[1]);
         surfaceTexture.setDefaultBufferSize(bestSize.getWidth(), bestSize.getHeight());
         Surface surface = new Surface(surfaceTexture);
-        imageReader = ImageReader.newInstance(720, 720, ImageFormat.JPEG, 2);
+        imageReader = ImageReader.newInstance(width,height, ImageFormat.JPEG, 2);
         Surface imageReaderSurface = imageReader.getSurface();
         imageReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireLatestImage();
@@ -225,8 +224,10 @@ public class CameraActivity extends AppCompatActivity {
                 byte[] bytes = new byte[buffer.remaining()];
                 buffer.get(bytes);
                 if (isPlay) {
+                    //Log.i("Byte pior:",bytes.length+"");
                     SocketManager.timeStamp = new Date().getTime();
                     SocketManager.bytes =compressAndProcessImage(bytes);
+                    Log.i("compress:",SocketManager.bytes.length +" "+bytes.length);
                 }
                 image.close();
             }
@@ -300,6 +301,7 @@ public class CameraActivity extends AppCompatActivity {
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
         bitmap=rotateBitmap(bitmap,sensorOrientation);
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        //bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
         switch (setting.GetValue(ValueSetting.Quality, "Trung bình")) {
             case "Thấp":
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
@@ -311,8 +313,19 @@ public class CameraActivity extends AppCompatActivity {
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
                 break;
         }
-        return byteArrayOutputStream.toByteArray();
+        try {
+            ByteArrayOutputStream gzipByteArrayStream=new ByteArrayOutputStream();
+            GZIPOutputStream gzipOutputStream=new GZIPOutputStream(gzipByteArrayStream);
+            gzipOutputStream.write(byteArrayOutputStream.toByteArray());
+            gzipOutputStream.close();
+            //Log.i("TAG", "compressAndProcessImage: "+imageBytes.length+" "+byteArrayOutputStream.toByteArray().length+" "+gzipByteArrayStream.toByteArray().length);
+            return gzipByteArrayStream.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
+
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
         Matrix matrix = new Matrix();
         if(isFrontCamera) {

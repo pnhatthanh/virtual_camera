@@ -1,11 +1,9 @@
 package com.pbl.virtualcam;
 
-import java.io.ByteArrayOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.Vector;
-import java.util.zip.GZIPOutputStream;
 
 public class SocketManager{
     private DatagramSocket serverSocket;
@@ -31,19 +29,19 @@ public class SocketManager{
             e.printStackTrace();
         }
     }
-    public static byte[] GZipByteData() {
-        if (bytes==null||bytes.length == 0) return null;
-        try {
-            ByteArrayOutputStream gzipByteArrayStream=new ByteArrayOutputStream();
-            GZIPOutputStream gzipOutputStream=new GZIPOutputStream(gzipByteArrayStream);
-            gzipOutputStream.write(bytes);
-            gzipOutputStream.close();
-            return gzipByteArrayStream.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
+//    public static byte[] GZipByteData() {
+//        if (bytes==null||bytes.length == 0) return null;
+//        try {
+//            ByteArrayOutputStream gzipByteArrayStream=new ByteArrayOutputStream();
+//            GZIPOutputStream gzipOutputStream=new GZIPOutputStream(gzipByteArrayStream);
+//            gzipOutputStream.write(bytes);
+//            gzipOutputStream.close();
+//            return gzipByteArrayStream.toByteArray();
+//        } catch (Exception e) {
+//            e.printStackTrace();
+//            return null;
+//        }
+//    }
 }
 
 class SocketHandler extends Thread{
@@ -62,7 +60,7 @@ class SocketHandler extends Thread{
         while (true){
             try{
                 byte[] dataToSend = new byte[lenPac + 10];
-                this.bytes = SocketManager.GZipByteData();
+                this.bytes = SocketManager.bytes;
                 this.timeStamp = SocketManager.timeStamp;
                 int numPac = (int)Math.ceil(this.bytes.length*1.0/this.lenPac);
                 for (int i = 0; i<numPac; i++){
