@@ -47,6 +47,7 @@ public class SocketManager{
 class SocketHandler extends Thread{
     private DatagramSocket serverSocket;
     private InetAddress clientAddress;
+    private boolean isRunning;
     private int clientPort;
     private int lenPac = 10000;
     private byte[] bytes;
@@ -55,9 +56,10 @@ class SocketHandler extends Thread{
         this.clientAddress=_clientAddress;
         this.clientPort=_clientPort;
         this.serverSocket=serverSocket;
+        this.isRunning=true;
     }
     public void run(){
-        while (true){
+        while (isRunning){
             try{
                 byte[] dataToSend = new byte[lenPac + 10];
                 this.bytes = SocketManager.bytes;
@@ -81,6 +83,10 @@ class SocketHandler extends Thread{
                 e.printStackTrace();
             }
         }
+    }
+    public void StopThread(){
+        isRunning=false;
+        SocketManager.socketSet.remove(this);
     }
     public String getClientAddress(){
         return this.clientAddress.getHostAddress();

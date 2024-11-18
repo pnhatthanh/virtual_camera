@@ -130,6 +130,21 @@ public class SettingActivity extends AppCompatActivity {
         AlertDialog.Builder builder=new AlertDialog.Builder(this);
         builder.setTitle("Các thiết bị kết nối");
         builder.setItems(devices.toArray(new String[0]),(dialog,which)->{
+            new AlertDialog.Builder(this)
+                    .setTitle("Ngắt kết nối")
+                    .setMessage("Bạn có muốn ngắt kết nối với thiết bị " + devices.get(which) + " không?")
+                    .setPositiveButton("Có", (dialog1, which1) -> {
+                        for (SocketHandler client : SocketManager.socketSet) {
+                            if (client.getClientAddress().equals(devices.get(which))) {
+                                client.StopThread();
+                                break;
+                            }
+                        }
+                    })
+                    .setNegativeButton("Không", (dialog1, which1) -> {
+                        dialog1.dismiss();
+                    })
+                    .show();
         });
         AlertDialog dialog = builder.create();
         dialog.show();
