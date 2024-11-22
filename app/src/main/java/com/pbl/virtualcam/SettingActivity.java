@@ -13,9 +13,8 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import java.util.ArrayList;
+
 import java.util.Arrays;
-import java.util.List;
 
 public class SettingActivity extends AppCompatActivity {
     TextView tvOrientation;
@@ -123,23 +122,19 @@ public class SettingActivity extends AppCompatActivity {
         dialog.show();
     }
     private void showDevice(){
-        List<String> devices=new ArrayList<>();
-        for(SocketHandler client:SocketManager.socketSet){
-            devices.add(client.getClientAddress());
+        String[] devices = SocketManager.socketSet.keySet().toArray(new String[0]);
+        if(devices.length==0){
+            tvEquipments.setText(SocketManager.socketSet.size()+" thiết bị");
+            return;
         }
         AlertDialog.Builder builder=new AlertDialog.Builder(this);
         builder.setTitle("Các thiết bị kết nối");
-        builder.setItems(devices.toArray(new String[0]),(dialog,which)->{
+        builder.setItems(devices,(dialog,which)->{
             AlertDialog.Builder confirmBuilder=new AlertDialog.Builder(this);
             confirmBuilder.setTitle("Ngắt kết nối");
-            confirmBuilder.setMessage("Bạn có muốn ngắt kết nối với thiết bị " + devices.get(which) + " không?")
+            confirmBuilder.setMessage("Bạn có muốn ngắt kết nối với thiết bị " + devices[which] + " không?")
                     .setPositiveButton("Có", (dialog1, which1) -> {
-                        for (SocketHandler client : SocketManager.socketSet) {
-                            if (client.getClientAddress().equals(devices.get(which))) {
-                                client.StopThread();
-                                break;
-                            }
-                        }
+                        SocketManager.socketSet.get(devices[which]).StopThread();
                         showDevice();
                     })
                     .setNegativeButton("Không", (dialog1, which1) -> {

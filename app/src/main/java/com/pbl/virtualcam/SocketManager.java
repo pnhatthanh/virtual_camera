@@ -1,13 +1,16 @@
 package com.pbl.virtualcam;
 
+import android.util.Log;
+
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
-import java.util.Vector;
+import java.util.HashMap;
+import java.util.Map;
 
 public class SocketManager{
     private DatagramSocket serverSocket;
-    public static Vector<SocketHandler> socketSet=new Vector<SocketHandler>();
+    public static Map<String, SocketHandler> socketSet=new HashMap<>();
     static public byte[] bytes;
     static public long timeStamp = -1;
     public SocketManager(int port){
@@ -18,30 +21,25 @@ public class SocketManager{
                 DatagramPacket receivePacket=new DatagramPacket(receiveData,receiveData.length);
                 serverSocket.receive(receivePacket);
                 String message=new String(receivePacket.getData());
-                if(!message.trim().equals("Connect to VCam")){
+                Log.i("Message",message.trim());
+                if(message.trim().equals("Connect to VCam")){
+                    SocketHandler socketHandler=new SocketHandler(serverSocket,receivePacket.getAddress(),receivePacket.getPort());
+                    socketSet.put(receivePacket.getAddress().getHostAddress(),socketHandler);
+                    socketHandler.start();
                     continue;
                 }
-                SocketHandler socketHandler=new SocketHandler(serverSocket,receivePacket.getAddress(),receivePacket.getPort());
-                socketSet.add(socketHandler);
-                socketHandler.start();
+                if(message.trim().equals("Disconnect to VCam")){
+                    Log.i("connect","hhhh");
+                    if(socketSet.get(receivePacket.getAddress().getHostAddress())==null){
+                        continue;
+                    }
+                    socketSet.get(receivePacket.getAddress().getHostAddress()).StopThread();
+                }
             }
         }catch (Exception e){
             e.printStackTrace();
         }
     }
-//    public static byte[] GZipByteData() {
-//        if (bytes==null||bytes.length == 0) return null;
-//        try {
-//            ByteArrayOutputStream gzipByteArrayStream=new ByteArrayOutputStream();
-//            GZIPOutputStream gzipOutputStream=new GZIPOutputStream(gzipByteArrayStream);
-//            gzipOutputStream.write(bytes);
-//            gzipOutputStream.close();
-//            return gzipByteArrayStream.toByteArray();
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//            return null;
-//        }
-//    }
 }
 
 class SocketHandler extends Thread{
@@ -86,7 +84,7 @@ class SocketHandler extends Thread{
     }
     public void StopThread(){
         isRunning=false;
-        SocketManager.socketSet.remove(this);
+        SocketManager.socketSet.remove(this.getClientAddress());
     }
     public String getClientAddress(){
         return this.clientAddress.getHostAddress();
