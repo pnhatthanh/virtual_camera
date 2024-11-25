@@ -23,7 +23,7 @@ public class SettingActivity extends AppCompatActivity {
     TextView tvEquipments;
     Button comeback;
     private final String[] orientations = {"Phong cảnh", "Chân dung"};
-    private final String[] sizes={"640*480","800*600", "960*720"};
+    private final String[] sizes={"640*480","720*720","1080*720", "1200*1200","1080*1080"};
     private final String[] listQuality={"Thấp","Trung bình", "Cao"};
     private int selectedOrientation;
     private int selectedSize;

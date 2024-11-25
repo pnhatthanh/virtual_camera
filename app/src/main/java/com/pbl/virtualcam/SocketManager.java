@@ -75,7 +75,7 @@ class SocketHandler extends Thread{
                     System.arraycopy(this.bytes,i * this.lenPac, dataToSend,10,realLenPac);
                     DatagramPacket pacToSend = new DatagramPacket(dataToSend,0,realLenPac + 10,this.clientAddress,this.clientPort);
                     this.serverSocket.send(pacToSend);
-                    Thread.sleep(10);
+                    Thread.sleep(5);
                 }
             }catch (Exception e){
                 e.printStackTrace();

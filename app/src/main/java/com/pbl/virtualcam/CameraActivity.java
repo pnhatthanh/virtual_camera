@@ -24,7 +24,6 @@ import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
-import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
@@ -111,19 +110,23 @@ public class CameraActivity extends AppCompatActivity {
     private void initializeCamera() {
         textureView = findViewById(R.id.view);
         cameraManager = (CameraManager) getSystemService(CAMERA_SERVICE);
-        textureView.setSurfaceTextureListener(textureListener);
         try {
-            if (setting.GetValue(ValueSetting.Orientation, "Phong cảnh").equals("Phong cảnh")) {
-                cameraID = cameraManager.getCameraIdList()[0];
-                isFrontCamera = false;
-            } else {
-                cameraID = cameraManager.getCameraIdList()[1];
-                isFrontCamera = true;
-            }
+            cameraID = cameraManager.getCameraIdList()[1];
+            isFrontCamera = true;
             CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraID);
             sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (textureView.isAvailable()) {
+            startCamera();
+        } else {
+            textureView.setSurfaceTextureListener(textureListener);
         }
     }
 
@@ -135,10 +138,8 @@ public class CameraActivity extends AppCompatActivity {
             isFrontCamera = !isFrontCamera;
             if (isFrontCamera) {
                 cameraID = cameraManager.getCameraIdList()[1];
-                setting.SetValue(ValueSetting.Orientation, "Chân dung");
             } else {
                 cameraID = cameraManager.getCameraIdList()[0];
-                setting.SetValue(ValueSetting.Orientation, "Phong cảnh");
             }
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraID);
             sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
@@ -206,16 +207,13 @@ public class CameraActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
-        StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
-        Size[] sizes = map.getOutputSizes(SurfaceTexture.class);
-        Size bestSize = sizes[0];
         SurfaceTexture surfaceTexture = textureView.getSurfaceTexture();
         String[] size = setting.GetValue(ValueSetting.Size, "640*480").split("\\*");
-        int height = Integer.parseInt(size[0]);
-        int width = Integer.parseInt(size[1]);
-        surfaceTexture.setDefaultBufferSize(bestSize.getWidth(), bestSize.getHeight());
+        int width = Integer.parseInt(size[0]);
+        int height = Integer.parseInt(size[1]);
+        surfaceTexture.setDefaultBufferSize(1080, 1080);
         Surface surface = new Surface(surfaceTexture);
-        imageReader = ImageReader.newInstance(width,height, ImageFormat.JPEG, 2);
+        imageReader = ImageReader.newInstance(1080, 1080, ImageFormat.JPEG, 1);
         Surface imageReaderSurface = imageReader.getSurface();
         imageReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireLatestImage();
@@ -224,7 +222,6 @@ public class CameraActivity extends AppCompatActivity {
                 byte[] bytes = new byte[buffer.remaining()];
                 buffer.get(bytes);
                 if (isPlay) {
-                    //Log.i("Byte pior:",bytes.length+"");
                     SocketManager.timeStamp = new Date().getTime();
                     SocketManager.bytes =compressAndProcessImage(bytes);
                     Log.i("compress:",SocketManager.bytes.length +" "+bytes.length);
@@ -237,7 +234,6 @@ public class CameraActivity extends AppCompatActivity {
             captureRequestBuilder = myCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
             captureRequestBuilder.addTarget(surface);
             captureRequestBuilder.addTarget(imageReaderSurface);
-
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 OutputConfiguration outputConfiguration = new OutputConfiguration(surface);
                 OutputConfiguration imageOutput = new OutputConfiguration(imageReaderSurface);
@@ -299,9 +295,10 @@ public class CameraActivity extends AppCompatActivity {
 
     private byte[] compressAndProcessImage(byte[] imageBytes) {
         Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-        bitmap=rotateBitmap(bitmap,sensorOrientation);
+        if (setting.GetValue(ValueSetting.Orientation, "Chân dung").equals("Chân dung")) {
+            bitmap = rotateBitmap(bitmap, sensorOrientation);
+        }
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        //bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
         switch (setting.GetValue(ValueSetting.Quality, "Trung bình")) {
             case "Thấp":
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
@@ -314,11 +311,10 @@ public class CameraActivity extends AppCompatActivity {
                 break;
         }
         try {
-            ByteArrayOutputStream gzipByteArrayStream=new ByteArrayOutputStream();
-            GZIPOutputStream gzipOutputStream=new GZIPOutputStream(gzipByteArrayStream);
+            ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+            GZIPOutputStream gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
             gzipOutputStream.write(byteArrayOutputStream.toByteArray());
             gzipOutputStream.close();
-            //Log.i("TAG", "compressAndProcessImage: "+imageBytes.length+" "+byteArrayOutputStream.toByteArray().length+" "+gzipByteArrayStream.toByteArray().length);
             return gzipByteArrayStream.toByteArray();
         } catch (Exception e) {
             e.printStackTrace();
@@ -328,7 +324,7 @@ public class CameraActivity extends AppCompatActivity {
 
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
         Matrix matrix = new Matrix();
-        if(isFrontCamera) {
+        if (isFrontCamera) {
             matrix.preScale(1.0f, -1.0f);
         }
         matrix.postRotate(orientation);
