@@ -21,3 +21,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Virtual Cam"
 include(":app")
+include(":open-cv")

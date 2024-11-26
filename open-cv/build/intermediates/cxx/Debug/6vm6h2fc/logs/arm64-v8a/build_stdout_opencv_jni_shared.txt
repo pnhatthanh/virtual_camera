@@ -1,0 +1,2 @@
+ninja: Entering directory `D:\Adroid-PBL4\open-cv\.cxx\Debug\6vm6h2fc\arm64-v8a'
+ninja: no work to do.

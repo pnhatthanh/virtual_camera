@@ -5,7 +5,6 @@ import static android.Manifest.permission.CAMERA;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
 import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
@@ -24,6 +23,7 @@ import android.media.ImageReader;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
+import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Button;
@@ -36,11 +36,15 @@ import androidx.core.content.ContextCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
-import java.io.ByteArrayOutputStream;
+import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Mat;
+import org.opencv.core.MatOfByte;
+import org.opencv.core.MatOfInt;
+import org.opencv.imgcodecs.Imgcodecs;
+
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Date;
-import java.util.zip.GZIPOutputStream;
 
 public class CameraActivity extends AppCompatActivity {
 
@@ -97,6 +101,9 @@ public class CameraActivity extends AppCompatActivity {
             Intent intent = new Intent(CameraActivity.this, SettingActivity.class);
             startActivity(intent);
         });
+        if (OpenCVLoader.initLocal()) {
+            Log.i("OpenCV", "OpenCV successfully loaded.");
+        }
 
         new Thread(() -> {
             try {
@@ -207,13 +214,16 @@ public class CameraActivity extends AppCompatActivity {
         } catch (CameraAccessException e) {
             e.printStackTrace();
         }
+        StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
+        Size[] sizes = map.getOutputSizes(SurfaceTexture.class);
+        Size bestSize = sizes[0];
         SurfaceTexture surfaceTexture = textureView.getSurfaceTexture();
+        surfaceTexture.setDefaultBufferSize(bestSize.getWidth(), bestSize.getHeight());
+        Surface surface = new Surface(surfaceTexture);
         String[] size = setting.GetValue(ValueSetting.Size, "640*480").split("\\*");
         int width = Integer.parseInt(size[0]);
         int height = Integer.parseInt(size[1]);
-        surfaceTexture.setDefaultBufferSize(1080, 1080);
-        Surface surface = new Surface(surfaceTexture);
-        imageReader = ImageReader.newInstance(1080, 1080, ImageFormat.JPEG, 1);
+        imageReader = ImageReader.newInstance(1440,1080, ImageFormat.JPEG, 1);
         Surface imageReaderSurface = imageReader.getSurface();
         imageReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireLatestImage();
@@ -224,7 +234,8 @@ public class CameraActivity extends AppCompatActivity {
                 if (isPlay) {
                     SocketManager.timeStamp = new Date().getTime();
                     SocketManager.bytes =compressAndProcessImage(bytes);
-                    Log.i("compress:",SocketManager.bytes.length +" "+bytes.length);
+                    //SocketManager.bytes=bytes;
+
                 }
                 image.close();
             }
@@ -294,32 +305,16 @@ public class CameraActivity extends AppCompatActivity {
     }
 
     private byte[] compressAndProcessImage(byte[] imageBytes) {
-        Bitmap bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
-        if (setting.GetValue(ValueSetting.Orientation, "Chân dung").equals("Chân dung")) {
-            bitmap = rotateBitmap(bitmap, sensorOrientation);
-        }
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        switch (setting.GetValue(ValueSetting.Quality, "Trung bình")) {
-            case "Thấp":
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 50, byteArrayOutputStream);
-                break;
-            case "Trung bình":
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 75, byteArrayOutputStream);
-                break;
-            case "Cao":
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
-                break;
-        }
-        try {
-            ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
-            GZIPOutputStream gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-            gzipOutputStream.write(byteArrayOutputStream.toByteArray());
-            gzipOutputStream.close();
-            return gzipByteArrayStream.toByteArray();
-        } catch (Exception e) {
-            e.printStackTrace();
+        Mat img = Imgcodecs.imdecode(new MatOfByte(imageBytes), Imgcodecs.IMREAD_COLOR);
+        if (img.empty()) {
+            System.out.println("Error loading image from byte array.");
             return null;
         }
+        MatOfByte compressedImage = new MatOfByte();
+        Imgcodecs.imencode(".jpeg", img, compressedImage, new MatOfInt(
+                Imgcodecs.IMWRITE_JPEG_QUALITY, 80));
+        byte[] imageData = compressedImage.toArray();
+        return imageData;
     }
 
     private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {

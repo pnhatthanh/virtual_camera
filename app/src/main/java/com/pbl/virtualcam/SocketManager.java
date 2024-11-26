@@ -2,11 +2,13 @@ package com.pbl.virtualcam;
 
 import android.util.Log;
 
+import java.io.ByteArrayOutputStream;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.zip.GZIPOutputStream;
 
 public class SocketManager{
     private DatagramSocket serverSocket;
@@ -29,7 +31,6 @@ public class SocketManager{
                     continue;
                 }
                 if(message.trim().equals("Disconnect to VCam")){
-                    Log.i("connect","hhhh");
                     if(socketSet.get(receivePacket.getAddress().getHostAddress())==null){
                         continue;
                     }
@@ -47,7 +48,7 @@ class SocketHandler extends Thread{
     private InetAddress clientAddress;
     private boolean isRunning;
     private int clientPort;
-    private int lenPac = 10000;
+    private int lenPac = 1600;
     private byte[] bytes;
     private long timeStamp;
     public SocketHandler(DatagramSocket serverSocket, InetAddress _clientAddress, int _clientPort) {
@@ -60,7 +61,16 @@ class SocketHandler extends Thread{
         while (isRunning){
             try{
                 byte[] dataToSend = new byte[lenPac + 10];
-                this.bytes = SocketManager.bytes;
+                try {
+                    ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
+                    GZIPOutputStream gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
+                    gzipOutputStream.write(SocketManager.bytes);
+                    this.bytes= gzipByteArrayStream.toByteArray();
+                    gzipOutputStream.close();
+                } catch (Exception e) {
+                    continue;
+                }
+                Log.i("eeee",this.bytes.length+"");
                 this.timeStamp = SocketManager.timeStamp;
                 int numPac = (int)Math.ceil(this.bytes.length*1.0/this.lenPac);
                 for (int i = 0; i<numPac; i++){
@@ -75,8 +85,8 @@ class SocketHandler extends Thread{
                     System.arraycopy(this.bytes,i * this.lenPac, dataToSend,10,realLenPac);
                     DatagramPacket pacToSend = new DatagramPacket(dataToSend,0,realLenPac + 10,this.clientAddress,this.clientPort);
                     this.serverSocket.send(pacToSend);
-                    Thread.sleep(5);
                 }
+                Thread.sleep(5);
             }catch (Exception e){
                 e.printStackTrace();
             }
