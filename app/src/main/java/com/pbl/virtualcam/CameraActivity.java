@@ -37,6 +37,7 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import org.opencv.android.OpenCVLoader;
+import org.opencv.core.Core;
 import org.opencv.core.Mat;
 import org.opencv.core.MatOfByte;
 import org.opencv.core.MatOfInt;
@@ -107,7 +108,7 @@ public class CameraActivity extends AppCompatActivity {
 
         new Thread(() -> {
             try {
-                new SocketManager(8888);
+                new SocketManager(8888,CameraActivity.this);
             } catch (Exception e) {
                 Toast.makeText(this, "Kết nối thất bại!", Toast.LENGTH_SHORT).show();
             }
@@ -223,7 +224,7 @@ public class CameraActivity extends AppCompatActivity {
         String[] size = setting.GetValue(ValueSetting.Size, "640*480").split("\\*");
         int width = Integer.parseInt(size[0]);
         int height = Integer.parseInt(size[1]);
-        imageReader = ImageReader.newInstance(1440,1080, ImageFormat.JPEG, 1);
+        imageReader = ImageReader.newInstance(width,height, ImageFormat.JPEG, 1);
         Surface imageReaderSurface = imageReader.getSurface();
         imageReader.setOnImageAvailableListener(reader -> {
             Image image = reader.acquireLatestImage();
@@ -311,8 +312,20 @@ public class CameraActivity extends AppCompatActivity {
             return null;
         }
         MatOfByte compressedImage = new MatOfByte();
+        if(setting.GetValue(ValueSetting.Orientation,"Chân dung").equals("Chân dung")){
+            Mat rotatedImg=new Mat();
+            if(isFrontCamera){
+                Core.rotate(img,rotatedImg,Core.ROTATE_90_COUNTERCLOCKWISE);
+            }else{
+                Core.rotate(img,rotatedImg,Core.ROTATE_90_CLOCKWISE);
+            }
+            Imgcodecs.imencode(".jpeg", rotatedImg, compressedImage, new MatOfInt(
+                    Imgcodecs.IMWRITE_JPEG_QUALITY, 90));
+            byte[] imageData = compressedImage.toArray();
+            return imageData;
+        }
         Imgcodecs.imencode(".jpeg", img, compressedImage, new MatOfInt(
-                Imgcodecs.IMWRITE_JPEG_QUALITY, 80));
+                Imgcodecs.IMWRITE_JPEG_QUALITY, 90));
         byte[] imageData = compressedImage.toArray();
         return imageData;
     }
