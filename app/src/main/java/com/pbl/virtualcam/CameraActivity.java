@@ -4,9 +4,7 @@ import static android.Manifest.permission.CAMERA;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
-import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
@@ -26,6 +24,7 @@ import android.util.Log;
 import android.util.Size;
 import android.view.Surface;
 import android.view.TextureView;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -58,7 +57,6 @@ public class CameraActivity extends AppCompatActivity {
     private CameraDevice myCameraDevice;
     private CaptureRequest.Builder captureRequestBuilder;
     private ImageReader imageReader;
-    private Integer sensorOrientation = 0;
     private boolean isPlay = true;
     private SettingStorage setting;
 
@@ -66,6 +64,10 @@ public class CameraActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getWindow().setFlags(
+                WindowManager.LayoutParams.FLAG_FULLSCREEN,
+                WindowManager.LayoutParams.FLAG_FULLSCREEN
+        );
         setContentView(R.layout.activity_camera);
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
             v.setPadding(insets.getInsets(WindowInsetsCompat.Type.systemBars()).left,
@@ -121,8 +123,6 @@ public class CameraActivity extends AppCompatActivity {
         try {
             cameraID = cameraManager.getCameraIdList()[1];
             isFrontCamera = true;
-            CameraCharacteristics cameraCharacteristics = cameraManager.getCameraCharacteristics(cameraID);
-            sensorOrientation = cameraCharacteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (CameraAccessException e) {
             throw new RuntimeException(e);
         }
@@ -149,8 +149,6 @@ public class CameraActivity extends AppCompatActivity {
             } else {
                 cameraID = cameraManager.getCameraIdList()[0];
             }
-            CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraID);
-            sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -235,8 +233,6 @@ public class CameraActivity extends AppCompatActivity {
                 if (isPlay) {
                     SocketManager.timeStamp = new Date().getTime();
                     SocketManager.bytes =compressAndProcessImage(bytes);
-                    //SocketManager.bytes=bytes;
-
                 }
                 image.close();
             }
@@ -311,6 +307,18 @@ public class CameraActivity extends AppCompatActivity {
             System.out.println("Error loading image from byte array.");
             return null;
         }
+        int quality=80;
+        switch (setting.GetValue(ValueSetting.Quality,"Trung bình")){
+            case "Thấp":
+                quality=70;
+                break;
+            case "Trung bình":
+                quality=80;
+                break;
+            case "Cao":
+                quality=90;
+                break;
+        }
         MatOfByte compressedImage = new MatOfByte();
         if(setting.GetValue(ValueSetting.Orientation,"Chân dung").equals("Chân dung")){
             Mat rotatedImg=new Mat();
@@ -320,23 +328,14 @@ public class CameraActivity extends AppCompatActivity {
                 Core.rotate(img,rotatedImg,Core.ROTATE_90_CLOCKWISE);
             }
             Imgcodecs.imencode(".jpeg", rotatedImg, compressedImage, new MatOfInt(
-                    Imgcodecs.IMWRITE_JPEG_QUALITY, 90));
+                    Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
             byte[] imageData = compressedImage.toArray();
             return imageData;
         }
         Imgcodecs.imencode(".jpeg", img, compressedImage, new MatOfInt(
-                Imgcodecs.IMWRITE_JPEG_QUALITY, 90));
+                Imgcodecs.IMWRITE_JPEG_QUALITY, quality));
         byte[] imageData = compressedImage.toArray();
         return imageData;
-    }
-
-    private Bitmap rotateBitmap(Bitmap bitmap, Integer orientation) {
-        Matrix matrix = new Matrix();
-        if (isFrontCamera) {
-            matrix.preScale(1.0f, -1.0f);
-        }
-        matrix.postRotate(orientation);
-        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
     }
 
     private void closeCamera() {

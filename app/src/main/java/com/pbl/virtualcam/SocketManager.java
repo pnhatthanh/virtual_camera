@@ -27,7 +27,6 @@ public class SocketManager{
                 DatagramPacket receivePacket=new DatagramPacket(receiveData,receiveData.length);
                 serverSocket.receive(receivePacket);
                 String message=new String(receivePacket.getData());
-                Log.i("Message",message.trim());
                 if(message.trim().equals("Connect to VCam")){
                     if (context != null && context instanceof Activity) {
                         ((Activity) context).runOnUiThread(() -> {
@@ -36,11 +35,10 @@ public class SocketManager{
                             confirmBuilder.setMessage("Bạn có muốn kết nối với thiết bị "
                                             + receivePacket.getAddress().getHostAddress() + " không?")
                                     .setPositiveButton("Có", (dialog1, which1) -> {
-
+                                        String messageResponse="Permit from VCam";
+                                        DatagramPacket pacToSend = new DatagramPacket(messageResponse.getBytes(),messageResponse.length(),receivePacket.getAddress(),receivePacket.getPort());
                                         new Thread(()->{
                                             try {
-                                                String messageResponse="Permit from VCam";
-                                                DatagramPacket pacToSend = new DatagramPacket(messageResponse.getBytes(),messageResponse.length(),receivePacket.getAddress(),receivePacket.getPort());
                                                 serverSocket.send(pacToSend);
                                             } catch (IOException e) {
                                                 throw new RuntimeException(e);
@@ -98,9 +96,10 @@ class SocketHandler extends Thread{
             try {
                 byte[] dataToSend = new byte[lenPac + 10];
                 try {
+                    byte[] _bytes=SocketManager.bytes;
                     ByteArrayOutputStream gzipByteArrayStream = new ByteArrayOutputStream();
                     GZIPOutputStream gzipOutputStream = new GZIPOutputStream(gzipByteArrayStream);
-                    gzipOutputStream.write(SocketManager.bytes);
+                    gzipOutputStream.write(_bytes);
                     gzipOutputStream.close();
                     this.bytes= gzipByteArrayStream.toByteArray();
                 } catch (Exception e) {
@@ -120,6 +119,7 @@ class SocketHandler extends Thread{
                     System.arraycopy(this.bytes, i * this.lenPac, dataToSend, 10, realLenPac);
                     DatagramPacket pacToSend = new DatagramPacket(dataToSend, 0, realLenPac + 10, this.clientAddress, this.clientPort);
                     this.serverSocket.send(pacToSend);
+                    Thread.sleep(1);
                 }
             }catch (Exception e){
                 e.printStackTrace();
